@@ -8,6 +8,19 @@ For RN < 0.57 and/or Gradle < 3 you MUST install react-native-fs at version @2.1
 
 For RN >= 0.57 and/or Gradle >= 3 you MUST install react-native-fs at version >= @2.13.2!
 
+For RN >= 0.61 please install react-native-fs at version >= @2.16.0!
+
+## Table of Contents
+1. [Changelog](#Changelog)
+1. Usage
+    1. [iOS](#usage-ios)
+    1. [Android](#usage-android)
+    1. [Windows](#usage-windows)
+1. [Examples](#Examples)
+1. [API](#API)
+1. [Background Downloads Tutorial (iOS)](#background-downloads-tutorial-ios)
+1. [Test / Demo App](#test--demo-app)
+
 ## Changelog
 
 View the changelog [here](https://github.com/itinance/react-native-fs/blob/master/CHANGELOG.md).
@@ -306,7 +319,7 @@ The following constants are available on the `RNFS` export:
 - `ExternalDirectoryPath` (`String`) The absolute path to the external files, shared directory (android only)
 - `ExternalStorageDirectoryPath` (`String`) The absolute path to the external storage, shared directory (android only)
 
-IMPORTANT: when using `ExternalStorageDirectoryPath` it's necessary to request permissions (on Android) to read and write on the external storage, here an example: [React Native Offical Doc] (https://facebook.github.io/react-native/docs/permissionsandroid)
+IMPORTANT: when using `ExternalStorageDirectoryPath` it's necessary to request permissions (on Android) to read and write on the external storage, here an example: [React Native Offical Doc](https://facebook.github.io/react-native/docs/permissionsandroid)
 
 ### `readDir(dirpath: string): Promise<ReadDirItem[]>`
 
@@ -314,7 +327,7 @@ Reads the contents of `path`. This must be an absolute path. Use the above path 
 
 The returned promise resolves with an array of objects with the following properties:
 
-```
+```js
 type ReadDirItem = {
   ctime: date;     // The creation date of the file (iOS only)
   mtime: date;     // The last modified date of the file
@@ -333,7 +346,7 @@ Reads the contents of `dirpath ` in the Android app's assets folder.
 
 The returned promise resolves with an array of objects with the following properties:
 
-```
+```js
 type ReadDirItem = {
   name: string;     // The name of the item
   path: string;     // The absolute path to the item
@@ -356,7 +369,7 @@ Node.js style version of `readDir` that returns only the names. Note the lowerca
 Stats an item at `filepath`. If the `filepath` is linked to a virtual file, for example Android Content URI, the `originalPath` can be used to find the pointed file path.
 The promise resolves with an object with the following properties:
 
-```
+```js
 type StatResult = {
   path:            // The same as filepath argument
   ctime: date;     // The creation date of the file
@@ -431,7 +444,7 @@ Note: Android only. Will overwrite destPath if it already exists.
 
 ### `copyAssetsFileIOS(imageUri: string, destPath: string, width: number, height: number, scale : number = 1.0, compression : number = 1.0, resizeMode : string = 'contain'  ): Promise<string>`
 
-iOS-only: copies a file from camera-roll, that is prefixed with "assets-library://asset/asset.JPG?..."
+iOS-only (not available on Mac Catalyst): copies a file from camera-roll, that is prefixed with "assets-library://asset/asset.JPG?..."
 to a specific destination. It will download the original from iCloud if necessary.
 
 If width and height is > 0, the image will be resized to a specific size and a specific compression rate.
@@ -450,7 +463,7 @@ The promise will on success return the final destination of the file, as it was 
 
 ### copyAssetsVideoIOS(videoUri: string, destPath: string): Promise<string>
 
-iOS-only: copies a video from assets-library, that is prefixed with 'assets-library://asset/asset.MOV?...'
+iOS-only (not available on Mac Catalyst): copies a video from assets-library, that is prefixed with 'assets-library://asset/asset.MOV?...'
 to a specific destination.
 
 ### `unlink(filepath: string): Promise<void>`
@@ -497,7 +510,7 @@ Create a directory at `filepath`. Automatically creates parents and does not thr
 
 ### `downloadFile(options: DownloadFileOptions): { jobId: number, promise: Promise<DownloadResult> }`
 
-```
+```js
 type DownloadFileOptions = {
   fromUrl: string;          // URL to download file from
   toFile: string;           // Local filesystem path to save the file to
@@ -505,15 +518,17 @@ type DownloadFileOptions = {
   background?: boolean;     // Continue the download in the background after the app terminates (iOS only)
   discretionary?: boolean;  // Allow the OS to control the timing and speed of the download to improve perceived performance  (iOS only)
   cacheable?: boolean;      // Whether the download can be stored in the shared NSURLCache (iOS only, defaults to true)
+  progressInterval?: number;
   progressDivider?: number;
   begin?: (res: DownloadBeginCallbackResult) => void;
   progress?: (res: DownloadProgressCallbackResult) => void;
   resumable?: () => void;    // only supported on iOS yet
   connectionTimeout?: number // only supported on Android yet
   readTimeout?: number       // supported on Android and iOS
+  backgroundTimeout?: number // Maximum time (in milliseconds) to download an entire resource (iOS only, useful for timing out background downloads)
 };
 ```
-```
+```js
 type DownloadResult = {
   jobId: number;          // The download job ID, required if one wishes to cancel the download. See `stopDownload`.
   statusCode: number;     // The HTTP status code
@@ -525,7 +540,7 @@ Download file from `options.fromUrl` to `options.toFile`. Will overwrite any pre
 
 If `options.begin` is provided, it will be invoked once upon download starting when headers have been received and passed a single argument with the following properties:
 
-```
+```js
 type DownloadBeginCallbackResult = {
   jobId: number;          // The download job ID, required if one wishes to cancel the download. See `stopDownload`.
   statusCode: number;     // The HTTP status code
@@ -536,13 +551,16 @@ type DownloadBeginCallbackResult = {
 
 If `options.progress` is provided, it will be invoked continuously and passed a single argument with the following properties:
 
-```
+```js
 type DownloadProgressCallbackResult = {
   jobId: number;          // The download job ID, required if one wishes to cancel the download. See `stopDownload`.
   contentLength: number;  // The total size in bytes of the download resource
   bytesWritten: number;   // The number of bytes written to the file so far
 };
 ```
+
+If `options.progressInterval` is provided, it will return progress events in the maximum frequency of `progressDivider`.
+For example, if `progressInterval` = 100, you will not receive callbacks more often than every 100th millisecond.
 
 If `options.progressDivider` is provided, it will return progress events that divided by `progressDivider`.
 
@@ -569,7 +587,7 @@ Check if the the download job with this ID is resumable with `resumeDownload()`.
 
 Example:
 
-```
+```js
 if (await RNFS.isResumable(jobId) {
     RNFS.resumeDownload(jobId)
 }
@@ -585,7 +603,7 @@ Read more about background downloads in the [Background Downloads Tutorial (iOS)
 
 `options` (`Object`) - An object containing named parameters
 
-```
+```js
 type UploadFileOptions = {
   toUrl: string;            // URL to upload file to
   binaryStreamOnly?: boolean// Allow for binary data stream for file to be uploaded without extra headers, Default is 'false'
@@ -598,7 +616,7 @@ type UploadFileOptions = {
 };
 
 ```
-```
+```js
 type UploadResult = {
   jobId: number;        // The upload job ID, required if one wishes to cancel the upload. See `stopUpload`.
   statusCode: number;   // The HTTP status code
@@ -609,7 +627,7 @@ type UploadResult = {
 
 Each file should have the following structure:
 
-```
+```js
 type UploadFileItem = {
   name: string;       // Name of the file, if not defined then filename is used
   filename: string;   // Name of file
@@ -620,7 +638,7 @@ type UploadFileItem = {
 
 If `options.begin` is provided, it will be invoked once upon upload has begun:
 
-```
+```js
 type UploadBeginCallbackResult = {
   jobId: number;        // The upload job ID, required if one wishes to cancel the upload. See `stopUpload`.
 };
@@ -628,7 +646,7 @@ type UploadBeginCallbackResult = {
 
 If `options.progress` is provided, it will be invoked continuously and passed a single object with the following properties:
 
-```
+```js
 type UploadProgressCallbackResult = {
   jobId: number;                      // The upload job ID, required if one wishes to cancel the upload. See `stopUpload`.
   totalBytesExpectedToSend: number;   // The total number of bytes that will be sent to the server
@@ -646,7 +664,7 @@ Abort the current upload job with this ID.
 
 Returns an object with the following properties:
 
-```
+```js
 type FSInfoResult = {
   totalSpace: number;   // The total amount of storage space on the device (in bytes).
   freeSpace: number;    // The amount of available storage space on the device (in bytes).
@@ -678,7 +696,7 @@ Background downloads in iOS require a bit of a setup.
 
 First, in your `AppDelegate.m` file add the following:
 
-```
+```js
 #import <RNFSManager.h>
 
 ...
